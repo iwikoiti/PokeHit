@@ -13,7 +13,7 @@ data class PokemonListItem(
     @SerializedName("name") val name: String,
     @SerializedName("url") val url: String
 ) {
-    // Извлекаем ID из URL (например: "https://pokeapi.co/api/v2/pokemon/25/")
+    // Извлекаем ID из URL ("https://pokeapi.co/api/v2/pokemon/25/")
     val id: Int
         get() = url.trimEnd('/').split("/").last().toInt()
 }

@@ -1,4 +1,4 @@
-package com.example.wewatch.api
+package com.example.pokehit.api
 
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -9,9 +9,9 @@ object ApiClient {
     private const val BASE_URL = "https://pokeapi.co/api/v2/"
 
     private val okHttpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .writeTimeout(15, TimeUnit.SECONDS)
         .build()
 
     private val retrofit: Retrofit = Retrofit.Builder()

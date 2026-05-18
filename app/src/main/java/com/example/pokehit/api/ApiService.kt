@@ -12,5 +12,13 @@ interface ApiService {
         @Query("offset") offset: Int = 0
     ): PokemonListResponse
 
+    @GET("pokemon/{id}")
+    suspend fun getPokemon(
+        @Path("id") id: Int
+    ): PokemonResponse
 
+    @GET("pokemon-species/{id}")
+    suspend fun getPokemonSpecies(
+        @Path("id") id: Int
+    ): PokemonSpeciesResponse
 }
