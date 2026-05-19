@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.example.pokehit.mvi.MainIntent
 import com.example.pokehit.mvi.MainState
 import com.example.pokehit.screens.component.PokemonItem
+import com.example.pokehit.screens.component.SearchBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,6 +35,7 @@ fun MainScreen(
     state: MainState,
     onIntent: (MainIntent) -> Unit,
     onPokemonClick: (Int) -> Unit,
+    onFilterClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -55,71 +57,90 @@ fun MainScreen(
             onIntent(MainIntent.LoadNextPage)
         }
     }
-
-    Box(
+    Column(
         modifier = modifier
             .fillMaxSize()
-
     ) {
-        when {
-            // Показываем прогресс при первой загрузке
-            state.showProgress -> {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center)
-                )
+        // Поисковая строка
+        SearchBar(
+            query = state.searchQuery,
+            onQueryChange = { query ->
+                onIntent(MainIntent.UpdateSearchQuery(query))
+            },
+            onClear = {
+                onIntent(MainIntent.UpdateSearchQuery(""))
             }
+        )
 
-            // Показываем сообщение об ошибке
-            state.error != null -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Ошибка: ${state.error}",
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    Text(
-                        text = "Потяните вниз для обновления",
-                        modifier = Modifier.padding(top = 8.dp)
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+        ) {
+            when {
+                // Показываем прогресс при первой загрузке
+                state.showProgress -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center)
                     )
                 }
-            }
 
-            // Показываем список
-            else -> {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(
-                        items = state.filteredPokemons,
-                        key = { it.id }
-                    ) { pokemon ->
-                        PokemonItem(
-                            pokemon = pokemon,
-                            isFavorite = state.favorites.contains(pokemon.id),
-                            onToggleFavorite = {
-                                onIntent(MainIntent.ToggleFavorite(pokemon.id))
-                            },
-                            onClick = {
-                                onPokemonClick(pokemon.id)
-                            }
-                        )
-                    }
+                // Показываем сообщение об ошибке
+                state.error != null -> {
+                    Text(
+                        text = "Ошибка: ${state.error}",
+                        modifier = Modifier.align(Alignment.Center),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
 
-                    // Индикатор загрузки следующей страницы
-                    if (state.isLoadingMore) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator()
+                state.filteredPokemons.isEmpty() && state.searchQuery.isNotBlank() -> {
+                    Text(
+                        text = "Ничего не найдено по запросу '${state.searchQuery}'",
+                        modifier = Modifier.align(Alignment.Center),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                state.filteredPokemons.isEmpty() -> {
+                    Text(
+                        text = "Нет покемонов",
+                        modifier = Modifier.align(Alignment.Center),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // Показываем список
+                else -> {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(
+                            items = state.filteredPokemons,
+                            key = { it.id }
+                        ) { pokemon ->
+                            PokemonItem(
+                                pokemon = pokemon,
+                                isFavorite = state.favorites.contains(pokemon.id),
+                                onToggleFavorite = {
+                                    onIntent(MainIntent.ToggleFavorite(pokemon.id))
+                                },
+                                onClick = {
+                                    onPokemonClick(pokemon.id)
+                                }
+                            )
+                        }
+
+                        if (state.isLoadingMore) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator()
+                                }
                             }
                         }
                     }

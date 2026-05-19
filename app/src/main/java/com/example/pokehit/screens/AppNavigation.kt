@@ -99,6 +99,13 @@ fun AppNavigation(
                     },
                     onPokemonClick = { pokemonId ->
                         navController.navigate("detail/$pokemonId")
+                    },
+                    onFilterClick = {
+                        android.widget.Toast.makeText(
+                            navController.context,
+                            "Фильтр откроется позже",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
                     }
                 )
             }

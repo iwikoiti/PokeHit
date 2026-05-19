@@ -3,12 +3,9 @@ package com.example.pokehit.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.pokehit.model.BasicPokemon
 import com.example.pokehit.mvi.MainIntent
 import com.example.pokehit.mvi.MainState
 import com.example.pokehit.repository.PokemonRepository
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +19,6 @@ class MainViewModel(
 
     companion object {
         private const val PAGE_SIZE = 50  //50 покемонов на страницу
-        private const val SEARCH_DEBOUNCE = 500L  //Задержка для поиска
     }
 
     private val _state = MutableStateFlow(MainState())
@@ -30,12 +26,9 @@ class MainViewModel(
 
     private val _intent = MutableSharedFlow<MainIntent>()
 
-    private var loadJob: Job? = null
-    private var searchJob: Job? = null
-
     init {
         collectIntents()
-        sendIntent(MainIntent.LoadPokemons)
+        loadPokemons()
     }
 
     fun sendIntent(intent: MainIntent) {
@@ -75,7 +68,6 @@ class MainViewModel(
                 _state.update {
                     it.copy(
                         allPokemons = pokemons,
-                        filteredPokemons = applyFilters(pokemons, it.searchQuery, it.selectedTypes),
                         isLoading = false,
                         currentPage = 1,
                         totalLoaded = pokemons.size,
@@ -83,6 +75,10 @@ class MainViewModel(
                     )
                 }
 
+                // Применяем текущие фильтры после загрузки
+                applyFilters()
+
+                // Загружаем избранное
                 loadFavorites()
 
             } catch (e: Exception) {
@@ -100,7 +96,6 @@ class MainViewModel(
     private fun loadNextPage() {
         val currentState = _state.value
 
-        // Проверяем, можно ли загружать следующую страницу
         if (currentState.isLoadingMore || !currentState.hasMorePages || currentState.isLoading) {
             return
         }
@@ -123,13 +118,15 @@ class MainViewModel(
                     _state.update {
                         it.copy(
                             allPokemons = allPokemons,
-                            filteredPokemons = applyFilters(allPokemons, it.searchQuery, it.selectedTypes),
                             isLoadingMore = false,
                             currentPage = nextPage,
                             totalLoaded = allPokemons.size,
                             hasMorePages = newPokemons.size == PAGE_SIZE
                         )
                     }
+
+                    // Применяем фильтры к обновлённому списку
+                    applyFilters()
                 } else {
                     _state.update { it.copy(isLoadingMore = false, hasMorePages = false) }
                 }
@@ -142,7 +139,6 @@ class MainViewModel(
     }
 
     //Избранное
-
     private fun loadFavorites() {
         viewModelScope.launch {
             repository.getFavoritesFlow().collect { favorites ->
@@ -166,21 +162,14 @@ class MainViewModel(
     }
 
     //Поиск и фильтрация
-
     private fun updateSearchQuery(query: String) {
         _state.update { it.copy(searchQuery = query) }
-
-        // Debounce для поиска (чтобы не фильтровать при каждом символе)
-        searchJob?.cancel()
-        searchJob = viewModelScope.launch {
-            delay(SEARCH_DEBOUNCE)
-            applyCurrentFilters()
-        }
+        applyFilters()
     }
 
     private fun updateSelectedTypes(types: Set<String>) {
         _state.update { it.copy(selectedTypes = types) }
-        applyCurrentFilters()
+        applyFilters()
     }
 
     private fun resetFilters() {
@@ -190,40 +179,40 @@ class MainViewModel(
                 selectedTypes = emptySet()
             )
         }
-        applyCurrentFilters()
+        applyFilters()
     }
 
     private fun refresh() {
-        // Очищаем кэш и загружаем заново
         viewModelScope.launch {
             repository.clearCache()
             loadPokemons()
         }
     }
 
-    private fun applyCurrentFilters() {
+    private fun applyFilters() {
         val currentState = _state.value
-        val filtered = applyFilters(
-            currentState.allPokemons,
-            currentState.searchQuery,
-            currentState.selectedTypes
-        )
-        _state.update { it.copy(filteredPokemons = filtered) }
-    }
+        var result = currentState.allPokemons
 
-    private fun applyFilters(
-        pokemons: List<BasicPokemon>,
-        searchQuery: String,
-        selectedTypes: Set<String>
-    ): List<BasicPokemon> {
-        var result = pokemons
-
-        // Фильтр по поисковому запросу
-        if (searchQuery.isNotBlank()) {
-            val lowerQuery = searchQuery.lowercase()
-            result = result.filter { it.name.contains(lowerQuery) }
+        // Фильтр по поисковому запросу (по имени)
+        if (currentState.searchQuery.isNotBlank()) {
+            val query = currentState.searchQuery.lowercase()
+            result = result.filter { pokemon ->
+                pokemon.name.contains(query)
+            }
         }
 
-        return result
+        // Фильтр по типам
+        if (currentState.selectedTypes.isNotEmpty()) {
+            // result = result.filter { pokemon ->
+            //     pokemon.types.any { currentState.selectedTypes.contains(it) }
+            // }
+            Log.d("MainViewModel", "Type filter selected: ${currentState.selectedTypes} (not yet implemented)")
+        }
+
+        _state.update { it.copy(filteredPokemons = result) }
+
+        Log.d("MainViewModel", "Filters applied: search='${currentState.searchQuery}', " +
+                "types=${currentState.selectedTypes}, " +
+                "results=${result.size}/${currentState.allPokemons.size}")
     }
 }

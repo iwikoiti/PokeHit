@@ -12,7 +12,7 @@ data class MainState(
 
     // Состояние UI
     val isLoading: Boolean = false,
-    val isLoadingMore: Boolean = false, // Для пагинации
+    val isLoadingMore: Boolean = false,
     val error: String? = null,
 
     // Пагинация
@@ -29,7 +29,8 @@ data class MainState(
         "normal", "fire", "water", "electric", "grass", "ice",
         "fighting", "poison", "ground", "flying", "psychic",
         "bug", "rock", "ghost", "dragon", "dark", "steel", "fairy"
-    )
+    ),
+    val showFilterSheet: Boolean = false  // Для управления BottomSheet
 ) {
     //проверка, пуст ли результат
     val isEmpty: Boolean
