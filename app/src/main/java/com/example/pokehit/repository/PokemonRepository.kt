@@ -6,13 +6,17 @@ import com.example.pokehit.model.BasicPokemon
 import java.io.IOException
 import com.example.pokehit.api.PokemonResponse
 import com.example.pokehit.api.PokemonSpeciesResponse
+import com.example.pokehit.database.AppDatabase
 import com.example.pokehit.model.DetailedPokemon
 import com.example.pokehit.model.PokemonStat
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 class PokemonRepository(
-    private val apiService: ApiService
+    private val apiService: ApiService,
+    private val database: AppDatabase
 ) {
     private val cache = mutableMapOf<Int, DetailedPokemon>()
     private val cacheMutex = Mutex()
@@ -147,5 +151,64 @@ class PokemonRepository(
             homeImageUrl = response.sprites.other?.home?.frontDefault,
             dreamWorldImageUrl = response.sprites.other?.dreamWorld?.frontDefault
         )
+    }
+
+    //Добавить покемона в избранное
+    suspend fun addToFavorites(pokemonId: Int) {
+        try {
+            database.favoritePokemonDao().addToFavorites(
+                com.example.pokehit.database.FavoritePokemonEntity(pokemonId)
+            )
+            Log.d("PokeRepo", "Added $pokemonId to favorites")
+        } catch (e: Exception) {
+            Log.e("PokeRepo", "Error adding to favorites: ${e.message}")
+        }
+    }
+
+    //Удалить покемона из избранного
+    suspend fun removeFromFavorites(pokemonId: Int) {
+        try {
+            database.favoritePokemonDao().removeFromFavorites(pokemonId)
+            Log.d("PokeRepo", "Removed $pokemonId from favorites")
+        } catch (e: Exception) {
+            Log.e("PokeRepo", "Error removing from favorites: ${e.message}")
+        }
+    }
+
+    //Проверить, находится ли покемон в избранном
+    suspend fun isFavorite(pokemonId: Int): Boolean {
+        return try {
+            val count = database.favoritePokemonDao().isFavorite(pokemonId)
+            count > 0
+        } catch (e: Exception) {
+            Log.e("PokeRepo", "Error checking favorite: ${e.message}")
+            false
+        }
+    }
+
+    //Получить Flow со списком избранных ID
+    fun getFavoritesFlow(): Flow<Set<Int>> {
+        return database.favoritePokemonDao().getFavoritesFlow()
+            .map { entities -> entities.map { it.pokemonId }.toSet() }
+    }
+
+    //Получить список избранных покемонов
+    suspend fun getFavoritePokemonIds(): List<Int> {
+        return try {
+            database.favoritePokemonDao().getAllFavorites().map { it.pokemonId }
+        } catch (e: Exception) {
+            Log.e("PokeRepo", "Error getting favorites: ${e.message}")
+            emptyList()
+        }
+    }
+
+    //Загрузить всех избранных покемонов (с деталями)
+    suspend fun loadFavoritePokemons(): List<DetailedPokemon> {
+        val favoriteIds = getFavoritePokemonIds()
+        Log.d("PokeRepo", "Loading ${favoriteIds.size} favorite pokemons")
+
+        return favoriteIds.mapNotNull { id ->
+            loadPokemonDetails(id)  // Использует кэш
+        }
     }
 }

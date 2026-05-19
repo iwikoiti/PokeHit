@@ -39,32 +39,41 @@ class MainActivity : ComponentActivity() {
             }
         }
         lifecycleScope.launch(Dispatchers.IO) {
-            val repository = PokemonRepository(ApiClient.apiService)
+            Log.d("PokeRepoTest", "=== ТЕСТ 4.4: Избранное ===")
 
-            // Первый вызов - из сети
-            val startTime1 = System.currentTimeMillis()
-            val pikachu1 = repository.loadPokemonDetails(25)
-            val duration1 = System.currentTimeMillis() - startTime1
-            Log.d("PokeRepoTest", "Первый вызов (сеть): ${duration1}ms")
+            val repository = PokemonRepository(
+                ApiClient.apiService,
+                AppDatabase.getDatabase(this@MainActivity)
+            )
 
-            // Второй вызов - из кэша
-            val startTime2 = System.currentTimeMillis()
-            val pikachu2 = repository.loadPokemonDetails(25)
-            val duration2 = System.currentTimeMillis() - startTime2
-            Log.d("PokeRepoTest", "Второй вызов (кэш): ${duration2}ms")
+            // 1. Добавляем в избранное
+            repository.addToFavorites(25)  // Пикачу
+            repository.addToFavorites(132) // Дитто
+            Log.d("PokeRepoTest", "Добавили Пикачу и Дитто")
 
-            // Проверяем, что объекты одинаковые
-            Log.d("PokeRepoTest", "одинаково? ${pikachu1 === pikachu2}")
+            // 2. Проверяем статус
+            val isPikachuFavorite = repository.isFavorite(25)
+            val isDittoFavorite = repository.isFavorite(132)
+            val isBulbasaurFavorite = repository.isFavorite(1)
+            Log.d("PokeRepoTest", "Пикачу в избранном: $isPikachuFavorite")
+            Log.d("PokeRepoTest", "Дитто в избранном: $isDittoFavorite")
+            Log.d("PokeRepoTest", "Бульбазавр в избранном: $isBulbasaurFavorite")
 
-            // Проверяем размер кэша
-            //val charmander = repository.loadPokemonDetails(4)
-            val mewtwo = repository.loadPokemonDetails(150)
-            if (mewtwo != null) {
-                Log.d("PokeRepoTest", "Mewtwo загружен")
-            } else {
-                Log.d("PokeRepoTest", "Mewtwo пропущен (ошибка загрузки)")
+            // 3. Получаем список ID
+            val favoriteIds = repository.getFavoritePokemonIds()
+            Log.d("PokeRepoTest", "Избранные ID: $favoriteIds")
+
+            // 4. Удаляем Ditto
+            repository.removeFromFavorites(132)
+            val updatedIds = repository.getFavoritePokemonIds()
+            Log.d("PokeRepoTest", "После удаления Ditto: $updatedIds")
+
+            // 5. Загружаем детали избранных
+            val favoritePokemons = repository.loadFavoritePokemons()
+            Log.d("PokeRepoTest", "Детали избранных: ${favoritePokemons.size} покемонов")
+            favoritePokemons.forEach { pokemon ->
+                Log.d("PokeRepoTest", "  - ${pokemon.basicInfo.name} (${pokemon.basicInfo.types})")
             }
-            Log.d("PokeRepoTest", "Размер кэша после загрузки 3 покемонов: ожидается 3")
         }
 
     }
