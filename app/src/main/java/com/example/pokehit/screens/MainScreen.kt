@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -55,81 +56,70 @@ fun MainScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("PokeHit") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+
+    ) {
+        when {
+            // Показываем прогресс при первой загрузке
+            state.showProgress -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center)
                 )
-            )
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            when {
-                // Показываем прогресс при первой загрузке
-                state.showProgress -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
+            }
+
+            // Показываем сообщение об ошибке
+            state.error != null -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Ошибка: ${state.error}",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Text(
+                        text = "Потяните вниз для обновления",
+                        modifier = Modifier.padding(top = 8.dp)
                     )
                 }
+            }
 
-                // Показываем сообщение об ошибке
-                state.error != null -> {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "Ошибка: ${state.error}",
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Text(
-                            text = "Потяните вниз для обновления",
-                            modifier = Modifier.padding(top = 8.dp)
+            // Показываем список
+            else -> {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(
+                        items = state.filteredPokemons,
+                        key = { it.id }
+                    ) { pokemon ->
+                        PokemonItem(
+                            pokemon = pokemon,
+                            isFavorite = state.favorites.contains(pokemon.id),
+                            onToggleFavorite = {
+                                onIntent(MainIntent.ToggleFavorite(pokemon.id))
+                            },
+                            onClick = {
+                                onPokemonClick(pokemon.id)
+                            }
                         )
                     }
-                }
 
-                // Показываем список
-                else -> {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(
-                            items = state.filteredPokemons,
-                            key = { it.id }
-                        ) { pokemon ->
-                            PokemonItem(
-                                pokemon = pokemon,
-                                isFavorite = state.favorites.contains(pokemon.id),
-                                onToggleFavorite = {
-                                    onIntent(MainIntent.ToggleFavorite(pokemon.id))
-                                },
-                                onClick = {
-                                    onPokemonClick(pokemon.id)
-                                }
-                            )
-                        }
-
-                        // Индикатор загрузки следующей страницы
-                        if (state.isLoadingMore) {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator()
-                                }
+                    // Индикатор загрузки следующей страницы
+                    if (state.isLoadingMore) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
                             }
                         }
                     }
