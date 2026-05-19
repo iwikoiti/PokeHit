@@ -23,6 +23,7 @@ class PokemonRepository(
     private companion object {
         private const val MAX_CACHE_SIZE = 100
     }
+    private var allPokemonListCache: List<BasicPokemon>? = null
 
     //Список покемонов с пагинацией
     suspend fun loadPokemonList(limit: Int = 50, offset: Int = 0): List<BasicPokemon> {
@@ -210,5 +211,98 @@ class PokemonRepository(
         return favoriteIds.mapNotNull { id ->
             loadPokemonDetails(id)  // Использует кэш
         }
+    }
+
+    //Загрузка и кэш покемонов для поиска/фильтрации
+    suspend fun getAllPokemonBasic(): List<BasicPokemon> {
+        // Если уже загружены, возвращаем из кэша
+        if (allPokemonListCache != null) {
+            return allPokemonListCache!!
+        }
+
+        Log.d("PokeRepo", "Loading all basic pokemon (this may take a while)")
+
+        val limit = 1000
+        val response = apiService.getPokemonList(limit = limit, offset = 0)
+
+        val basicPokemons = response.results.map { item ->
+            BasicPokemon(
+                id = item.id,
+                name = item.name,
+                imageUrl = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${item.id}.png",
+                types = emptyList()  // Типы пока пустые
+            )
+        }
+
+        allPokemonListCache = basicPokemons
+        Log.d("PokeRepo", "Cached ${basicPokemons.size} basic pokemons")
+
+        return basicPokemons
+    }
+
+    //Поиск покемонов по имени
+    suspend fun searchPokemon(query: String): List<BasicPokemon> {
+        if (query.isBlank()) {
+            return getAllPokemonBasic()
+        }
+
+        val allPokemon = getAllPokemonBasic()
+        val lowerQuery = query.lowercase()
+
+        val results = allPokemon.filter { pokemon ->
+            pokemon.name.contains(lowerQuery)
+        }
+
+        Log.d("PokeRepo", "Search '$query': found ${results.size} results")
+        return results
+    }
+
+    //Фильтрация покемонов по типам
+    suspend fun filterPokemonByTypes(selectedTypes: Set<String>): List<BasicPokemon> {
+        if (selectedTypes.isEmpty()) {
+            return getAllPokemonBasic()
+        }
+
+        Log.d("PokeRepo", "Filtering by types: $selectedTypes")
+
+        val allPokemon = getAllPokemonBasic()
+        val filtered = mutableListOf<BasicPokemon>()
+
+        for (pokemon in allPokemon) {
+            // Загружаем детали (использует кэш, если уже загружены)
+            val details = loadPokemonDetails(pokemon.id)
+            if (details != null) {
+                val hasMatchingType = details.basicInfo.types.any { type ->
+                    selectedTypes.contains(type)
+                }
+                if (hasMatchingType) {
+                    filtered.add(pokemon)
+                }
+            }
+        }
+
+        Log.d("PokeRepo", "Filter result: ${filtered.size} pokemons")
+        return filtered
+    }
+
+    //Поиск + фильтрация
+    suspend fun searchAndFilter(
+        query: String,
+        selectedTypes: Set<String>
+    ): List<BasicPokemon> {
+        // фильтруем по типам
+        val typeFiltered = if (selectedTypes.isNotEmpty()) {
+            filterPokemonByTypes(selectedTypes)
+        } else {
+            getAllPokemonBasic()
+        }
+
+        // фильтруем по имени
+        if (query.isBlank()) {
+            return typeFiltered
+        }
+
+        val lowerQuery = query.lowercase()
+        return typeFiltered.filter { it.name.contains(lowerQuery) }
     }
 }

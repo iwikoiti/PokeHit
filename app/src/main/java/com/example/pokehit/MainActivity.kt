@@ -39,40 +39,33 @@ class MainActivity : ComponentActivity() {
             }
         }
         lifecycleScope.launch(Dispatchers.IO) {
-            Log.d("PokeRepoTest", "=== ТЕСТ 4.4: Избранное ===")
-
             val repository = PokemonRepository(
                 ApiClient.apiService,
                 AppDatabase.getDatabase(this@MainActivity)
             )
 
-            // 1. Добавляем в избранное
-            repository.addToFavorites(25)  // Пикачу
-            repository.addToFavorites(132) // Дитто
-            Log.d("PokeRepoTest", "Добавили Пикачу и Дитто")
+            //Поиск по имени
+            Log.d("PokeRepoTest", "Поиск pika")
+            val pikaResults = repository.searchPokemon("pika")
+            pikaResults.take(5).forEach { pokemon ->
+                Log.d("PokeRepoTest", "  ${pokemon.name}")
+            }
 
-            // 2. Проверяем статус
-            val isPikachuFavorite = repository.isFavorite(25)
-            val isDittoFavorite = repository.isFavorite(132)
-            val isBulbasaurFavorite = repository.isFavorite(1)
-            Log.d("PokeRepoTest", "Пикачу в избранном: $isPikachuFavorite")
-            Log.d("PokeRepoTest", "Дитто в избранном: $isDittoFavorite")
-            Log.d("PokeRepoTest", "Бульбазавр в избранном: $isBulbasaurFavorite")
+            //Фильтрация по типам
+            Log.d("PokeRepoTest", " Фильтр fire")
+            val fireTypes = repository.filterPokemonByTypes(setOf("fire"))
+            fireTypes.take(5).forEach { pokemon ->
+                // Для проверки типов нужно загрузить детали
+                val details = repository.loadPokemonDetails(pokemon.id)
+                Log.d("PokeRepoTest", "  ${pokemon.name} (${details?.basicInfo?.types})")
+            }
 
-            // 3. Получаем список ID
-            val favoriteIds = repository.getFavoritePokemonIds()
-            Log.d("PokeRepoTest", "Избранные ID: $favoriteIds")
-
-            // 4. Удаляем Ditto
-            repository.removeFromFavorites(132)
-            val updatedIds = repository.getFavoritePokemonIds()
-            Log.d("PokeRepoTest", "После удаления Ditto: $updatedIds")
-
-            // 5. Загружаем детали избранных
-            val favoritePokemons = repository.loadFavoritePokemons()
-            Log.d("PokeRepoTest", "Детали избранных: ${favoritePokemons.size} покемонов")
-            favoritePokemons.forEach { pokemon ->
-                Log.d("PokeRepoTest", "  - ${pokemon.basicInfo.name} (${pokemon.basicInfo.types})")
+            //Комбинированный поиск
+            Log.d("PokeRepoTest", "char + fire")
+            val combined = repository.searchAndFilter("char", setOf("fire"))
+            combined.forEach { pokemon ->
+                val details = repository.loadPokemonDetails(pokemon.id)
+                Log.d("PokeRepoTest", "  ${pokemon.name} (${details?.basicInfo?.types})")
             }
         }
 
