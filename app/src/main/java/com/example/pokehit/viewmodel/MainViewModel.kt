@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class MainViewModel(
-    private val repository: PokemonRepository
+    val repository: PokemonRepository
 ) : ViewModel() {
 
     companion object {
