@@ -33,34 +33,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        // Тест базы данных
-        lifecycleScope.launch(Dispatchers.IO) {
-            val db = AppDatabase.getDatabase(this@MainActivity)
-            val dao = db.favoritePokemonDao()
-
-            // 1. Добавляем в избранное
-            dao.addToFavorites(FavoritePokemonEntity(132))  // Ditto
-            dao.addToFavorites(FavoritePokemonEntity(25))   // Pikachu
-            Log.d("PokeDB", "Добавили покемонов в избранное")
-
-            // 2. Проверяем, избранный ли Ditto
-            val isDittoFavorite = dao.isFavorite(132) > 0
-            Log.d("PokeDB", "Ditto в избранном: $isDittoFavorite")  // true
-
-            // 3. Получаем все ID избранных
-            val favorites = dao.getAllFavorites()
-            Log.d("PokeDB", "Все избранные ID: ${favorites.map { it.pokemonId }}")  // [132, 25]
-
-            // 4. Удаляем Ditto
-            dao.removeFromFavorites(132)
-            val updatedFavorites = dao.getAllFavorites()
-            Log.d("PokeDB", "После удаления: ${updatedFavorites.map { it.pokemonId }}")  // [25]
-
-            // 5. Чистим всё
-            dao.clearAllFavorites()
-            val emptyFavorites = dao.getAllFavorites()
-            Log.d("PokeDB", "После очистки: ${emptyFavorites.size}")  // 0
-        }
     }
 }
 
