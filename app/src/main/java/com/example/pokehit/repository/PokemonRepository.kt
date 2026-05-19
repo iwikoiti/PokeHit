@@ -4,6 +4,10 @@ import android.util.Log
 import com.example.pokehit.api.ApiService
 import com.example.pokehit.model.BasicPokemon
 import java.io.IOException
+import com.example.pokehit.api.PokemonResponse
+import com.example.pokehit.api.PokemonSpeciesResponse
+import com.example.pokehit.model.DetailedPokemon
+import com.example.pokehit.model.PokemonStat
 
 class PokemonRepository(
     private val apiService: ApiService
@@ -35,5 +39,79 @@ class PokemonRepository(
             Log.e("PokeRepo", "Unknown error: ${e.message}")
             emptyList()
         }
+    }
+
+    //Детальная информация о покемоне
+    suspend fun loadPokemonDetails(pokemonId: Int): DetailedPokemon? {
+        return try {
+            Log.d("PokeRepo", "Loading details for pokemon $pokemonId from network")
+
+            // основная информация
+            val pokemonResponse = apiService.getPokemon(pokemonId)
+
+            // описание
+            val speciesResponse = try {
+                apiService.getPokemonSpecies(pokemonId)
+            } catch (e: Exception) {
+                Log.e("PokeRepo", "Failed to load species for $pokemonId: ${e.message}")
+                null
+            }
+            convertToDetailed(pokemonResponse, speciesResponse)
+
+        } catch (e: IOException) {
+            Log.e("PokeRepo", "Network error loading details: ${e.message}")
+            null
+        } catch (e: Exception) {
+            Log.e("PokeRepo", "Error loading details: ${e.message}")
+            null
+        }
+    }
+
+    //Конвертируем API-ответ в модель DetailedPokemon
+    private fun convertToDetailed(
+        response: PokemonResponse,
+        speciesResponse: PokemonSpeciesResponse?
+    ): DetailedPokemon {
+        // основное изображение
+        val imageUrl = response.sprites.other?.officialArtwork?.frontDefault
+            ?: response.sprites.frontDefault
+            ?: ""
+
+        // базовая информация
+        val basicInfo = BasicPokemon(
+            id = response.id,
+            name = response.name,
+            imageUrl = imageUrl,
+            types = response.types.map { it.type.name }
+        )
+
+        // характеристики
+        val stats = response.stats.map { stat ->
+            PokemonStat(
+                name = stat.stat.name,
+                baseStat = stat.baseStat,
+                effort = stat.effort
+            )
+        }
+
+        // Описание
+        val description = speciesResponse?.flavorTextEntries
+            ?.firstOrNull { it.language.name == "en" }
+            ?.getDescription()
+
+        return DetailedPokemon(
+            basicInfo = basicInfo,
+            height = response.height,
+            weight = response.weight,
+            baseExperience = response.baseExperience,
+            stats = stats,
+            abilities = response.abilities.map { it.ability.name },
+            description = description,
+            backImageUrl = response.sprites.backDefault,
+            frontShinyUrl = response.sprites.frontShiny,
+            backShinyUrl = response.sprites.backShiny,
+            homeImageUrl = response.sprites.other?.home?.frontDefault,
+            dreamWorldImageUrl = response.sprites.other?.dreamWorld?.frontDefault
+        )
     }
 }

@@ -40,16 +40,23 @@ class MainActivity : ComponentActivity() {
         }
         lifecycleScope.launch(Dispatchers.IO) {
             val repository = PokemonRepository(ApiClient.apiService)
-
-            // Загружаем первые 5 покемонов
-            val pokemonList = repository.loadPokemonList(limit = 5, offset = 0)
-
-            Log.d("PokeRepoTest", "Загружено покемонов: ${pokemonList.size}")
-            pokemonList.forEachIndexed { index, pokemon ->
-                Log.d("PokeRepoTest", "[$index] id=${pokemon.id}, name=${pokemon.name}")
+            // детали Ditto
+            val dittoDetails = repository.loadPokemonDetails(132)
+            if (dittoDetails != null) {
+                Log.d("PokeRepoTest", "Ditto загружен успешно")
+                Log.d("PokeRepoTest", "имя: ${dittoDetails.basicInfo.name}")
+                Log.d("PokeRepoTest", "типы: ${dittoDetails.basicInfo.types}")
+                Log.d("PokeRepoTest", "рост: ${dittoDetails.height}")
+                Log.d("PokeRepoTest", "вес: ${dittoDetails.weight}")
+                Log.d("PokeRepoTest", "способности: ${dittoDetails.abilities}")
+                Log.d("PokeRepoTest", "описание: ${dittoDetails.description?.take(100)}...")
+                // статы
+                dittoDetails.stats.forEach { stat ->
+                    Log.d("PokeRepoTest", "   ${stat.name}: ${stat.baseStat} (effort: ${stat.effort})")
+                }
+            } else {
+                Log.e("PokeRepoTest", "Не удалось загрузить Ditto")
             }
-            val firstPokemon = pokemonList.firstOrNull()
-            Log.d("PokeRepoTest", "Пример картинки: ${firstPokemon?.imageUrl}")
         }
 
     }
