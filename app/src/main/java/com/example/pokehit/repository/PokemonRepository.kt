@@ -8,10 +8,17 @@ import com.example.pokehit.api.PokemonResponse
 import com.example.pokehit.api.PokemonSpeciesResponse
 import com.example.pokehit.model.DetailedPokemon
 import com.example.pokehit.model.PokemonStat
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class PokemonRepository(
     private val apiService: ApiService
 ) {
+    private val cache = mutableMapOf<Int, DetailedPokemon>()
+    private val cacheMutex = Mutex()
+    private companion object {
+        private const val MAX_CACHE_SIZE = 100
+    }
 
     //Список покемонов с пагинацией
     suspend fun loadPokemonList(limit: Int = 50, offset: Int = 0): List<BasicPokemon> {
@@ -43,27 +50,54 @@ class PokemonRepository(
 
     //Детальная информация о покемоне
     suspend fun loadPokemonDetails(pokemonId: Int): DetailedPokemon? {
+        //Проверяем кэш
+        cacheMutex.withLock {
+            cache[pokemonId]?.let {
+                Log.d("PokeRepo", "Returning cached details for $pokemonId")
+                return it
+            }
+        }
+
+        //Загружаем из сети
         return try {
             Log.d("PokeRepo", "Loading details for pokemon $pokemonId from network")
 
-            // основная информация
             val pokemonResponse = apiService.getPokemon(pokemonId)
-
-            // описание
             val speciesResponse = try {
                 apiService.getPokemonSpecies(pokemonId)
             } catch (e: Exception) {
                 Log.e("PokeRepo", "Failed to load species for $pokemonId: ${e.message}")
                 null
             }
-            convertToDetailed(pokemonResponse, speciesResponse)
+            val detailedPokemon = convertToDetailed(pokemonResponse, speciesResponse)
 
+            //Сохраняем в кэш
+            cacheMutex.withLock {
+                if (cache.size >= MAX_CACHE_SIZE) {
+                    // Удаляем самый старый элемент
+                    val oldestKey = cache.keys.firstOrNull()
+                    if (oldestKey != null) {
+                        cache.remove(oldestKey)
+                        Log.d("PokeRepo", "Cache full, removed oldest: $oldestKey")
+                    }
+                }
+                cache[pokemonId] = detailedPokemon
+                Log.d("PokeRepo", "Cached details for $pokemonId, cache size: ${cache.size}")
+            }
+
+            detailedPokemon
         } catch (e: IOException) {
             Log.e("PokeRepo", "Network error loading details: ${e.message}")
             null
         } catch (e: Exception) {
             Log.e("PokeRepo", "Error loading details: ${e.message}")
             null
+        }
+    }
+    suspend fun clearCache() {
+        cacheMutex.withLock {
+            cache.clear()
+            Log.d("PokeRepo", "Cache cleared")
         }
     }
 

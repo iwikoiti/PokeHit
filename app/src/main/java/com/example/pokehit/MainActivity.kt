@@ -40,23 +40,31 @@ class MainActivity : ComponentActivity() {
         }
         lifecycleScope.launch(Dispatchers.IO) {
             val repository = PokemonRepository(ApiClient.apiService)
-            // детали Ditto
-            val dittoDetails = repository.loadPokemonDetails(132)
-            if (dittoDetails != null) {
-                Log.d("PokeRepoTest", "Ditto загружен успешно")
-                Log.d("PokeRepoTest", "имя: ${dittoDetails.basicInfo.name}")
-                Log.d("PokeRepoTest", "типы: ${dittoDetails.basicInfo.types}")
-                Log.d("PokeRepoTest", "рост: ${dittoDetails.height}")
-                Log.d("PokeRepoTest", "вес: ${dittoDetails.weight}")
-                Log.d("PokeRepoTest", "способности: ${dittoDetails.abilities}")
-                Log.d("PokeRepoTest", "описание: ${dittoDetails.description?.take(100)}...")
-                // статы
-                dittoDetails.stats.forEach { stat ->
-                    Log.d("PokeRepoTest", "   ${stat.name}: ${stat.baseStat} (effort: ${stat.effort})")
-                }
+
+            // Первый вызов - из сети
+            val startTime1 = System.currentTimeMillis()
+            val pikachu1 = repository.loadPokemonDetails(25)
+            val duration1 = System.currentTimeMillis() - startTime1
+            Log.d("PokeRepoTest", "Первый вызов (сеть): ${duration1}ms")
+
+            // Второй вызов - из кэша
+            val startTime2 = System.currentTimeMillis()
+            val pikachu2 = repository.loadPokemonDetails(25)
+            val duration2 = System.currentTimeMillis() - startTime2
+            Log.d("PokeRepoTest", "Второй вызов (кэш): ${duration2}ms")
+
+            // Проверяем, что объекты одинаковые
+            Log.d("PokeRepoTest", "одинаково? ${pikachu1 === pikachu2}")
+
+            // Проверяем размер кэша
+            //val charmander = repository.loadPokemonDetails(4)
+            val mewtwo = repository.loadPokemonDetails(150)
+            if (mewtwo != null) {
+                Log.d("PokeRepoTest", "Mewtwo загружен")
             } else {
-                Log.e("PokeRepoTest", "Не удалось загрузить Ditto")
+                Log.d("PokeRepoTest", "Mewtwo пропущен (ошибка загрузки)")
             }
+            Log.d("PokeRepoTest", "Размер кэша после загрузки 3 покемонов: ожидается 3")
         }
 
     }
