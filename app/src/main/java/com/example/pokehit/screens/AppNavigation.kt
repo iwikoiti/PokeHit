@@ -15,6 +15,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -25,6 +28,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.pokehit.R
+import com.example.pokehit.mvi.MainIntent
+import com.example.pokehit.screens.component.FilterBottomSheet
 import com.example.pokehit.viewmodel.DetailViewModel
 import com.example.pokehit.viewmodel.DetailViewModelFactory
 import com.example.pokehit.viewmodel.FavoritesViewModel
@@ -43,6 +48,8 @@ fun AppNavigation(
 ) {
     val navController = rememberNavController()
     val mainState by mainViewModel.state.collectAsState()
+
+    var showFilterSheet by remember { mutableStateOf(false) }
 
     val favoritesViewModel: FavoritesViewModel = viewModel(
         factory = FavoritesViewModelFactory(mainViewModel.repository)
@@ -101,11 +108,7 @@ fun AppNavigation(
                         navController.navigate("detail/$pokemonId")
                     },
                     onFilterClick = {
-                        android.widget.Toast.makeText(
-                            navController.context,
-                            "Фильтр откроется позже",
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
+                        showFilterSheet = true
                     }
                 )
             }
@@ -146,6 +149,30 @@ fun AppNavigation(
                     }
                 )
             }
+        }
+        if (showFilterSheet) {
+            FilterBottomSheet(
+                availableTypes = mainState.availableTypes,
+                selectedTypes = mainState.selectedTypes,
+                onTypeToggle = { type ->
+                    val newSet = if (mainState.selectedTypes.contains(type)) {
+                        mainState.selectedTypes - type
+                    } else {
+                        mainState.selectedTypes + type
+                    }
+                    mainViewModel.sendIntent(MainIntent.UpdateSelectedTypes(newSet))
+                },
+                onApply = {
+                    showFilterSheet = false
+                },
+                onClearAll = {
+                    mainViewModel.sendIntent(MainIntent.ResetFilters)
+                    showFilterSheet = false
+                },
+                onDismiss = {
+                    showFilterSheet = false
+                }
+            )
         }
     }
 }
