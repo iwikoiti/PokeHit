@@ -13,11 +13,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.lifecycleScope
+import com.example.pokehit.api.ApiClient
 import com.example.pokehit.database.AppDatabase
 import com.example.pokehit.database.FavoritePokemonEntity
 import com.example.pokehit.model.BasicPokemon
 import com.example.pokehit.model.DetailedPokemon
 import com.example.pokehit.model.PokemonStat
+import com.example.pokehit.repository.PokemonRepository
 import com.example.pokehit.ui.theme.PokeHitTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -36,31 +38,19 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        // Тест модели
-        val testBasic = BasicPokemon(
-            id = 132,
-            name = "ditto",
-            imageUrl = "https://example.com/image.png",
-            types = listOf("normal")
-        )
-        Log.d("PokeModel", "BasicPokemon: ${testBasic.name}, types: ${testBasic.types}")
+        lifecycleScope.launch(Dispatchers.IO) {
+            val repository = PokemonRepository(ApiClient.apiService)
 
-        val testStat = PokemonStat(name = "hp", baseStat = 48, effort = 1)
-        val testDetailed = DetailedPokemon(
-            basicInfo = testBasic,
-            height = 3,
-            weight = 40,
-            baseExperience = 101,
-            stats = listOf(testStat),
-            abilities = listOf("limber", "imposter"),
-            description = "Test description",
-            backImageUrl = null,
-            frontShinyUrl = null,
-            backShinyUrl = null,
-            homeImageUrl = null,
-            dreamWorldImageUrl = null
-        )
-        Log.d("PokeModel", "DetailedPokemon HP: ${testDetailed.stats[0].baseStat}")
+            // Загружаем первые 5 покемонов
+            val pokemonList = repository.loadPokemonList(limit = 5, offset = 0)
+
+            Log.d("PokeRepoTest", "Загружено покемонов: ${pokemonList.size}")
+            pokemonList.forEachIndexed { index, pokemon ->
+                Log.d("PokeRepoTest", "[$index] id=${pokemon.id}, name=${pokemon.name}")
+            }
+            val firstPokemon = pokemonList.firstOrNull()
+            Log.d("PokeRepoTest", "Пример картинки: ${firstPokemon?.imageUrl}")
+        }
 
     }
 }
