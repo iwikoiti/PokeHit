@@ -3,7 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.devtoolsKsp)
-    id("org.jetbrains.kotlin.plugin.parcelize")
+    id("kotlin-parcelize")
 }
 
 android {
@@ -71,5 +71,4 @@ dependencies {
     implementation(libs.androidx.navigation)
     implementation(libs.androidx.lifecycle.viewmodel)
     implementation(libs.androidx.lifecycle.livedata)
-    implementation("org.jetbrains.kotlinx:kotlinx-parcelize-runtime")
 }
