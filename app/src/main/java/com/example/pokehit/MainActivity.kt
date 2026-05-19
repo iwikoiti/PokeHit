@@ -38,37 +38,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        lifecycleScope.launch(Dispatchers.IO) {
-            val repository = PokemonRepository(
-                ApiClient.apiService,
-                AppDatabase.getDatabase(this@MainActivity)
-            )
-
-            //Поиск по имени
-            Log.d("PokeRepoTest", "Поиск pika")
-            val pikaResults = repository.searchPokemon("pika")
-            pikaResults.take(5).forEach { pokemon ->
-                Log.d("PokeRepoTest", "  ${pokemon.name}")
-            }
-
-            //Фильтрация по типам
-            Log.d("PokeRepoTest", " Фильтр fire")
-            val fireTypes = repository.filterPokemonByTypes(setOf("fire"))
-            fireTypes.take(5).forEach { pokemon ->
-                // Для проверки типов нужно загрузить детали
-                val details = repository.loadPokemonDetails(pokemon.id)
-                Log.d("PokeRepoTest", "  ${pokemon.name} (${details?.basicInfo?.types})")
-            }
-
-            //Комбинированный поиск
-            Log.d("PokeRepoTest", "char + fire")
-            val combined = repository.searchAndFilter("char", setOf("fire"))
-            combined.forEach { pokemon ->
-                val details = repository.loadPokemonDetails(pokemon.id)
-                Log.d("PokeRepoTest", "  ${pokemon.name} (${details?.basicInfo?.types})")
-            }
-        }
-
     }
 }
 
