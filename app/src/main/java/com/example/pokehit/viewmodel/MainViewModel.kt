@@ -60,7 +60,7 @@ class MainViewModel(
             _state.update { it.copy(isLoading = true, error = null) }
 
             try {
-                val pokemons = repository.loadPokemonList(
+                val pokemons = repository.loadPokemonListWithTypes(
                     limit = PAGE_SIZE,
                     offset = 0
                 )
@@ -107,7 +107,7 @@ class MainViewModel(
                 val nextPage = currentState.currentPage + 1
                 val offset = (nextPage - 1) * PAGE_SIZE
 
-                val newPokemons = repository.loadPokemonList(
+                val newPokemons = repository.loadPokemonListWithTypes(
                     limit = PAGE_SIZE,
                     offset = offset
                 )
@@ -203,10 +203,11 @@ class MainViewModel(
 
         // Фильтр по типам
         if (currentState.selectedTypes.isNotEmpty()) {
-            // result = result.filter { pokemon ->
-            //     pokemon.types.any { currentState.selectedTypes.contains(it) }
-            // }
-            Log.d("MainViewModel", "Type filter selected: ${currentState.selectedTypes} (not yet implemented)")
+            result = result.filter { pokemon ->
+                pokemon.types.any { type ->
+                    currentState.selectedTypes.contains(type)
+                }
+            }
         }
 
         _state.update { it.copy(filteredPokemons = result) }

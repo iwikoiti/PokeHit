@@ -93,17 +93,13 @@ fun MainScreen(
                     )
                 }
 
-                state.filteredPokemons.isEmpty() && state.searchQuery.isNotBlank() -> {
-                    Text(
-                        text = "Ничего не найдено по запросу '${state.searchQuery}'",
-                        modifier = Modifier.align(Alignment.Center),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
                 state.filteredPokemons.isEmpty() -> {
                     Text(
-                        text = "Нет покемонов",
+                        text = if (state.searchQuery.isNotBlank() || state.selectedTypes.isNotEmpty()) {
+                            "Ничего не найдено по вашему запросу"
+                        } else {
+                            "Нет покемонов"
+                        },
                         modifier = Modifier.align(Alignment.Center),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

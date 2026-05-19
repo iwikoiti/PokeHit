@@ -65,22 +65,13 @@ fun PokemonItem(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Типы покемона (пока пустые)
-                if (pokemon.types.isNotEmpty()) {
-                    Row {
-                        pokemon.types.forEach { type ->
-                            TypeChip(
-                                type = type,
-                                modifier = Modifier.padding(end = 4.dp)
-                            )
-                        }
+                Row {
+                    pokemon.types.forEach { type ->
+                        TypeChip(
+                            type = type,
+                            modifier = Modifier.padding(end = 4.dp)
+                        )
                     }
-                } else {
-                    Text(
-                        text = "Типы: загрузка...",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
                 }
             }
 

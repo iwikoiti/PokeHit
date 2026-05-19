@@ -154,6 +154,38 @@ class PokemonRepository(
         )
     }
 
+    //Список покемонов с типами
+    suspend fun loadPokemonListWithTypes(limit: Int = 50, offset: Int = 0): List<BasicPokemon> {
+        return try {
+            Log.d("PokeRepo", "Loading pokemon list with types: limit=$limit, offset=$offset")
+
+            val listResponse = apiService.getPokemonList(limit, offset)
+
+            //Для каждого покемона загружаем детали (чтобы получить типы)
+            val basicPokemons = listResponse.results.map { item ->
+                val pokemonDetails = apiService.getPokemon(item.id)
+                BasicPokemon(
+                    id = pokemonDetails.id,
+                    name = pokemonDetails.name,
+                    imageUrl = pokemonDetails.sprites.other?.officialArtwork?.frontDefault
+                        ?: pokemonDetails.sprites.frontDefault
+                        ?: "",
+                    types = pokemonDetails.types.map { it.type.name }
+                )
+            }
+
+            Log.d("PokeRepo", "Loaded ${basicPokemons.size} pokemons with types")
+            basicPokemons
+
+        } catch (e: IOException) {
+            Log.e("PokeRepo", "Network error: ${e.message}")
+            emptyList()
+        } catch (e: Exception) {
+            Log.e("PokeRepo", "Unknown error: ${e.message}")
+            emptyList()
+        }
+    }
+
     //Добавить покемона в избранное
     suspend fun addToFavorites(pokemonId: Int) {
         try {

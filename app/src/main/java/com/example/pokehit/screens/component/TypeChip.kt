@@ -7,23 +7,29 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.pokehit.model.TypeColors
 
 @Composable
 fun TypeChip(
     type: String,
     modifier: Modifier = Modifier
 ) {
+    val typeName = type.replaceFirstChar { it.uppercase() }
+    val backgroundColor = TypeColors.getColor(type)
+
     Text(
-        text = type,
+        text = typeName,
         fontSize = 12.sp,
+        fontWeight = FontWeight.Medium,
         color = Color.White,
         modifier = modifier
             .background(
-                color = Color.Gray,
+                color = backgroundColor,
                 shape = RoundedCornerShape(16.dp)
             )
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = 10.dp, vertical = 4.dp)
     )
 }
