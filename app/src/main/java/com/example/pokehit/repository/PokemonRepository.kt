@@ -2,17 +2,17 @@ package com.example.pokehit.repository
 
 import android.util.Log
 import com.example.pokehit.api.ApiService
-import com.example.pokehit.model.BasicPokemon
-import java.io.IOException
 import com.example.pokehit.api.PokemonResponse
 import com.example.pokehit.api.PokemonSpeciesResponse
 import com.example.pokehit.database.AppDatabase
+import com.example.pokehit.model.BasicPokemon
 import com.example.pokehit.model.DetailedPokemon
 import com.example.pokehit.model.PokemonStat
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.io.IOException
 
 class PokemonRepository(
     private val apiService: ApiService,
@@ -20,12 +20,8 @@ class PokemonRepository(
 ) {
     private val cache = mutableMapOf<Int, DetailedPokemon>()
     private val cacheMutex = Mutex()
-    private companion object {
-        private const val MAX_CACHE_SIZE = 100
-    }
     private var allPokemonListCache: List<BasicPokemon>? = null
 
-    //Список покемонов с пагинацией
     suspend fun loadPokemonList(limit: Int = 50, offset: Int = 0): List<BasicPokemon> {
         return try {
             Log.d("PokeRepo", "Loading pokemon list: limit=$limit, offset=$offset")
@@ -37,7 +33,7 @@ class PokemonRepository(
                     id = item.id,
                     name = item.name,
                     imageUrl = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${item.id}.png",
-                    types = emptyList()  // типы пока пустые
+                    types = emptyList()
                 )
             }
 
@@ -53,9 +49,7 @@ class PokemonRepository(
         }
     }
 
-    //Детальная информация о покемоне
     suspend fun loadPokemonDetails(pokemonId: Int): DetailedPokemon? {
-        //Проверяем кэш
         cacheMutex.withLock {
             cache[pokemonId]?.let {
                 Log.d("PokeRepo", "Returning cached details for $pokemonId")
@@ -63,7 +57,6 @@ class PokemonRepository(
             }
         }
 
-        //Загружаем из сети
         return try {
             Log.d("PokeRepo", "Loading details for pokemon $pokemonId from network")
 
@@ -76,16 +69,7 @@ class PokemonRepository(
             }
             val detailedPokemon = convertToDetailed(pokemonResponse, speciesResponse)
 
-            //Сохраняем в кэш
             cacheMutex.withLock {
-                if (cache.size >= MAX_CACHE_SIZE) {
-                    // Удаляем самый старый элемент
-                    val oldestKey = cache.keys.firstOrNull()
-                    if (oldestKey != null) {
-                        cache.remove(oldestKey)
-                        Log.d("PokeRepo", "Cache full, removed oldest: $oldestKey")
-                    }
-                }
                 cache[pokemonId] = detailedPokemon
                 Log.d("PokeRepo", "Cached details for $pokemonId, cache size: ${cache.size}")
             }
@@ -99,24 +83,23 @@ class PokemonRepository(
             null
         }
     }
+
     suspend fun clearCache() {
         cacheMutex.withLock {
             cache.clear()
+            allPokemonListCache = null
             Log.d("PokeRepo", "Cache cleared")
         }
     }
 
-    //Конвертируем API-ответ в модель DetailedPokemon
     private fun convertToDetailed(
         response: PokemonResponse,
         speciesResponse: PokemonSpeciesResponse?
     ): DetailedPokemon {
-        // основное изображение
         val imageUrl = response.sprites.other?.officialArtwork?.frontDefault
             ?: response.sprites.frontDefault
             ?: ""
 
-        // базовая информация
         val basicInfo = BasicPokemon(
             id = response.id,
             name = response.name,
@@ -124,7 +107,6 @@ class PokemonRepository(
             types = response.types.map { it.type.name }
         )
 
-        // характеристики
         val stats = response.stats.map { stat ->
             PokemonStat(
                 name = stat.stat.name,
@@ -133,7 +115,6 @@ class PokemonRepository(
             )
         }
 
-        // Описание
         val description = speciesResponse?.flavorTextEntries
             ?.firstOrNull { it.language.name == "en" }
             ?.getDescription()
@@ -154,39 +135,6 @@ class PokemonRepository(
         )
     }
 
-    //Список покемонов с типами
-    suspend fun loadPokemonListWithTypes(limit: Int = 50, offset: Int = 0): List<BasicPokemon> {
-        return try {
-            Log.d("PokeRepo", "Loading pokemon list with types: limit=$limit, offset=$offset")
-
-            val listResponse = apiService.getPokemonList(limit, offset)
-
-            //Для каждого покемона загружаем детали (чтобы получить типы)
-            val basicPokemons = listResponse.results.map { item ->
-                val pokemonDetails = apiService.getPokemon(item.id)
-                BasicPokemon(
-                    id = pokemonDetails.id,
-                    name = pokemonDetails.name,
-                    imageUrl = pokemonDetails.sprites.other?.officialArtwork?.frontDefault
-                        ?: pokemonDetails.sprites.frontDefault
-                        ?: "",
-                    types = pokemonDetails.types.map { it.type.name }
-                )
-            }
-
-            Log.d("PokeRepo", "Loaded ${basicPokemons.size} pokemons with types")
-            basicPokemons
-
-        } catch (e: IOException) {
-            Log.e("PokeRepo", "Network error: ${e.message}")
-            emptyList()
-        } catch (e: Exception) {
-            Log.e("PokeRepo", "Unknown error: ${e.message}")
-            emptyList()
-        }
-    }
-
-    //Добавить покемона в избранное
     suspend fun addToFavorites(pokemonId: Int) {
         try {
             database.favoritePokemonDao().addToFavorites(
@@ -198,7 +146,6 @@ class PokemonRepository(
         }
     }
 
-    //Удалить покемона из избранного
     suspend fun removeFromFavorites(pokemonId: Int) {
         try {
             database.favoritePokemonDao().removeFromFavorites(pokemonId)
@@ -208,7 +155,6 @@ class PokemonRepository(
         }
     }
 
-    //Проверить, находится ли покемон в избранном
     suspend fun isFavorite(pokemonId: Int): Boolean {
         return try {
             val count = database.favoritePokemonDao().isFavorite(pokemonId)
@@ -219,13 +165,11 @@ class PokemonRepository(
         }
     }
 
-    //Получить Flow со списком избранных ID
     fun getFavoritesFlow(): Flow<Set<Int>> {
         return database.favoritePokemonDao().getFavoritesFlow()
             .map { entities -> entities.map { it.pokemonId }.toSet() }
     }
 
-    //Получить список избранных покемонов
     suspend fun getFavoritePokemonIds(): List<Int> {
         return try {
             database.favoritePokemonDao().getAllFavorites().map { it.pokemonId }
@@ -235,101 +179,106 @@ class PokemonRepository(
         }
     }
 
-    //Загрузить всех избранных покемонов (с деталями)
     suspend fun loadFavoritePokemons(): List<DetailedPokemon> {
         val favoriteIds = getFavoritePokemonIds()
         Log.d("PokeRepo", "Loading ${favoriteIds.size} favorite pokemons")
-
-        return favoriteIds.mapNotNull { id ->
-            loadPokemonDetails(id)  // Использует кэш
-        }
+        return favoriteIds.mapNotNull { id -> loadPokemonDetails(id) }
     }
 
-    //Загрузка и кэш покемонов для поиска/фильтрации
     suspend fun getAllPokemonBasic(): List<BasicPokemon> {
-        // Если уже загружены, возвращаем из кэша
-        if (allPokemonListCache != null) {
-            return allPokemonListCache!!
+        allPokemonListCache?.let { return it }
+
+        return try {
+            Log.d("PokeRepo", "Loading all basic pokemon")
+            val limit = 1000
+            val response = apiService.getPokemonList(limit = limit, offset = 0)
+
+            val basicPokemons = response.results.map { item ->
+                BasicPokemon(
+                    id = item.id,
+                    name = item.name,
+                    imageUrl = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${item.id}.png",
+                    types = emptyList()
+                )
+            }
+
+            allPokemonListCache = basicPokemons
+            Log.d("PokeRepo", "Cached ${basicPokemons.size} basic pokemons")
+            basicPokemons
+        } catch (e: Exception) {
+            Log.e("PokeRepo", "Error loading all pokemons: ${e.message}")
+            emptyList()
         }
-
-        Log.d("PokeRepo", "Loading all basic pokemon (this may take a while)")
-
-        val limit = 1000
-        val response = apiService.getPokemonList(limit = limit, offset = 0)
-
-        val basicPokemons = response.results.map { item ->
-            BasicPokemon(
-                id = item.id,
-                name = item.name,
-                imageUrl = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${item.id}.png",
-                types = emptyList()  // Типы пока пустые
-            )
-        }
-
-        allPokemonListCache = basicPokemons
-        Log.d("PokeRepo", "Cached ${basicPokemons.size} basic pokemons")
-
-        return basicPokemons
     }
 
-    //Поиск покемонов по имени
+    suspend fun loadPokemonListWithTypes(limit: Int = 50, offset: Int = 0): List<BasicPokemon> {
+        return try {
+            Log.d("PokeRepo", "Loading pokemon list with types: limit=$limit, offset=$offset")
+            val response = apiService.getPokemonList(limit, offset)
+            val basicList = response.results.map { item ->
+                BasicPokemon(
+                    id = item.id,
+                    name = item.name,
+                    imageUrl = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${item.id}.png",
+                    types = emptyList()
+                )
+            }
+
+            val detailedList = basicList.map { basic ->
+                loadPokemonDetails(basic.id)?.basicInfo ?: basic
+            }
+
+            detailedList
+        } catch (e: IOException) {
+            Log.e("PokeRepo", "Network error: ${e.message}")
+            emptyList()
+        } catch (e: Exception) {
+            Log.e("PokeRepo", "Unknown error: ${e.message}")
+            emptyList()
+        }
+    }
+
     suspend fun searchPokemon(query: String): List<BasicPokemon> {
         if (query.isBlank()) {
             return getAllPokemonBasic()
         }
-
         val allPokemon = getAllPokemonBasic()
         val lowerQuery = query.lowercase()
-
-        val results = allPokemon.filter { pokemon ->
+        return allPokemon.filter { pokemon ->
             pokemon.name.contains(lowerQuery)
         }
-
-        Log.d("PokeRepo", "Search '$query': found ${results.size} results")
-        return results
     }
 
-    //Фильтрация покемонов по типам
     suspend fun filterPokemonByTypes(selectedTypes: Set<String>): List<BasicPokemon> {
         if (selectedTypes.isEmpty()) {
             return getAllPokemonBasic()
         }
-
-        Log.d("PokeRepo", "Filtering by types: $selectedTypes")
-
         val allPokemon = getAllPokemonBasic()
         val filtered = mutableListOf<BasicPokemon>()
-
         for (pokemon in allPokemon) {
-            // Загружаем детали (использует кэш, если уже загружены)
             val details = loadPokemonDetails(pokemon.id)
             if (details != null) {
                 val hasMatchingType = details.basicInfo.types.any { type ->
                     selectedTypes.contains(type)
                 }
                 if (hasMatchingType) {
-                    filtered.add(pokemon)
+                    filtered.add(details.basicInfo)
                 }
             }
         }
-
-        Log.d("PokeRepo", "Filter result: ${filtered.size} pokemons")
         return filtered
     }
 
-    //Поиск + фильтрация
     suspend fun searchAndFilter(
         query: String,
         selectedTypes: Set<String>
     ): List<BasicPokemon> {
-        // фильтруем по типам
         val typeFiltered = if (selectedTypes.isNotEmpty()) {
             filterPokemonByTypes(selectedTypes)
         } else {
             getAllPokemonBasic()
         }
 
-        // фильтруем по имени
         if (query.isBlank()) {
             return typeFiltered
         }

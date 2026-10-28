@@ -107,7 +107,7 @@ fun MainScreen(
         )
 
         Box(
-            modifier = modifier
+            modifier = Modifier
                 .fillMaxSize()
         ) {
             when {
