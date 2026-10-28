@@ -5,6 +5,7 @@ import com.example.pokehit.api.ApiService
 import com.example.pokehit.api.PokemonResponse
 import com.example.pokehit.api.PokemonSpeciesResponse
 import com.example.pokehit.database.AppDatabase
+import com.example.pokehit.database.FavoritePokemonEntity
 import com.example.pokehit.model.BasicPokemon
 import com.example.pokehit.model.DetailedPokemon
 import com.example.pokehit.model.PokemonStat
@@ -127,19 +128,16 @@ class PokemonRepository(
             stats = stats,
             abilities = response.abilities.map { it.ability.name },
             description = description,
-            backImageUrl = response.sprites.backDefault,
-            frontShinyUrl = response.sprites.frontShiny,
-            backShinyUrl = response.sprites.backShiny,
             homeImageUrl = response.sprites.other?.home?.frontDefault,
-            dreamWorldImageUrl = response.sprites.other?.dreamWorld?.frontDefault
+            homeFrontShinyUrl = response.sprites.other?.home?.frontShiny,
+            frontShinyUrl = null,
+            officialArtworkShinyUrl = null
         )
     }
 
     suspend fun addToFavorites(pokemonId: Int) {
         try {
-            database.favoritePokemonDao().addToFavorites(
-                com.example.pokehit.database.FavoritePokemonEntity(pokemonId)
-            )
+            database.favoritePokemonDao().addToFavorites(FavoritePokemonEntity(pokemonId))
             Log.d("PokeRepo", "Added $pokemonId to favorites")
         } catch (e: Exception) {
             Log.e("PokeRepo", "Error adding to favorites: ${e.message}")
