@@ -9,6 +9,9 @@ import com.example.pokehit.database.FavoritePokemonEntity
 import com.example.pokehit.model.BasicPokemon
 import com.example.pokehit.model.DetailedPokemon
 import com.example.pokehit.model.PokemonStat
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
@@ -128,10 +131,7 @@ class PokemonRepository(
             stats = stats,
             abilities = response.abilities.map { it.ability.name },
             description = description,
-            homeImageUrl = response.sprites.other?.home?.frontDefault,
-            homeFrontShinyUrl = response.sprites.other?.home?.frontShiny,
-            frontShinyUrl = null,
-            officialArtworkShinyUrl = null
+            homeImageUrl = response.sprites.other?.home?.frontDefault ?: response.sprites.other?.officialArtwork?.frontDefault ?: imageUrl
         )
     }
 
@@ -209,6 +209,16 @@ class PokemonRepository(
         }
     }
 
+    private suspend fun loadPokemonTypes(id: Int): List<String> {
+        return try {
+            val response = apiService.getPokemon(id)
+            response.types.map { it.type.name }
+        } catch (e: Exception) {
+            Log.e("PokeRepo", "Error loading types for $id: ${e.message}")
+            emptyList()
+        }
+    }
+
     suspend fun loadPokemonListWithTypes(limit: Int = 50, offset: Int = 0): List<BasicPokemon> {
         return try {
             Log.d("PokeRepo", "Loading pokemon list with types: limit=$limit, offset=$offset")
@@ -222,11 +232,14 @@ class PokemonRepository(
                 )
             }
 
-            val detailedList = basicList.map { basic ->
-                loadPokemonDetails(basic.id)?.basicInfo ?: basic
+            coroutineScope {
+                basicList.map { basic ->
+                    async {
+                        val types = loadPokemonTypes(basic.id)
+                        basic.copy(types = types)
+                    }
+                }.awaitAll()
             }
-
-            detailedList
         } catch (e: IOException) {
             Log.e("PokeRepo", "Network error: ${e.message}")
             emptyList()
@@ -251,20 +264,28 @@ class PokemonRepository(
         if (selectedTypes.isEmpty()) {
             return getAllPokemonBasic()
         }
-        val allPokemon = getAllPokemonBasic()
-        val filtered = mutableListOf<BasicPokemon>()
-        for (pokemon in allPokemon) {
-            val details = loadPokemonDetails(pokemon.id)
-            if (details != null) {
-                val hasMatchingType = details.basicInfo.types.any { type ->
-                    selectedTypes.contains(type)
-                }
-                if (hasMatchingType) {
-                    filtered.add(details.basicInfo)
-                }
+
+        return try {
+            Log.d("PokeRepo", "Filtering by types: $selectedTypes")
+            val typeLists = coroutineScope {
+                selectedTypes.map { type ->
+                    async {
+                        apiService.getPokemonByType(type).pokemon.map { it.pokemon.name }
+                    }
+                }.awaitAll()
             }
+
+            val commonNames: Set<String> = if (typeLists.isEmpty()) {
+                emptySet()
+            } else {
+                typeLists.fold(typeLists.first().toSet()) { acc, list -> acc.intersect(list).toSet() }
+            }
+
+            getAllPokemonBasic().filter { commonNames.contains(it.name) }
+        } catch (e: Exception) {
+            Log.e("PokeRepo", "Error filtering by types: ${e.message}")
+            emptyList()
         }
-        return filtered
     }
 
     suspend fun searchAndFilter(

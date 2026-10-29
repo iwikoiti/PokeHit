@@ -12,10 +12,7 @@ data class DetailedPokemon(
     val stats: List<PokemonStat>,
     val abilities: List<String>,
     val description: String?,
-    val homeImageUrl: String?,
-    val homeFrontShinyUrl: String?,
-    val frontShinyUrl: String?,
-    val officialArtworkShinyUrl: String?
+    val homeImageUrl: String?
 ) : Parcelable
 
 @Parcelize

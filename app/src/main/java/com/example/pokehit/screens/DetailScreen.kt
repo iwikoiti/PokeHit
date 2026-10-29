@@ -267,11 +267,10 @@ private fun DetailContent(
         Spacer(modifier = Modifier.height(8.dp))
 
         val galleryImages = mutableListOf<String>()
-        pokemon.homeImageUrl?.let { galleryImages.add(it) }
-        pokemon.homeFrontShinyUrl?.let { if (!galleryImages.contains(it)) galleryImages.add(it) }
-        pokemon.frontShinyUrl?.let { if (!galleryImages.contains(it)) galleryImages.add(it) }
-        pokemon.officialArtworkShinyUrl?.let { if (!galleryImages.contains(it)) galleryImages.add(it) }
-        pokemon.basicInfo.imageUrl?.let { if (!galleryImages.contains(it)) galleryImages.add(it) }
+        pokemon.homeImageUrl?.let { if (it.isNotBlank()) galleryImages.add(it) }
+        if (pokemon.basicInfo.imageUrl.isNotBlank() && !galleryImages.contains(pokemon.basicInfo.imageUrl)) {
+            galleryImages.add(pokemon.basicInfo.imageUrl)
+        }
 
         if (galleryImages.isNotEmpty()) {
             LazyRow(
